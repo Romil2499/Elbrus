@@ -1,4 +1,4 @@
-import os, re, secrets, hashlib, sqlite3, smtplib, random, time, hmac, requests
+import os, re, secrets, hashlib, sqlite3, random, time, hmac, requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
