@@ -18,6 +18,12 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "el_brusto.db")
+@app.route("/google1234567890abcdef.html")
+def google_site_verification():
+    return send_from_directory(
+        str(BASE_DIR),
+        "google1234567890abcdef.html"
+    )
 
 EMAIL_HOST = os.getenv("MAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
