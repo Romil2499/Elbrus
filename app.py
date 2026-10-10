@@ -1,5 +1,4 @@
-import os, re, secrets, hashlib, sqlite3, smtplib, random, time, hmac
-from flask import send_from_directory
+import os, re, secrets, hashlib, sqlite3, smtplib, random, time, hmac, requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
@@ -18,12 +17,6 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "el_brusto.db")
-@app.route("/google72353591148eb633.html")
-def google_site_verification():
-    return send_from_directory(
-        str(BASE_DIR),
-        "google72353591148eb633.html"
-    )
 
 EMAIL_HOST = os.getenv("MAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
@@ -173,33 +166,37 @@ def mask_phone(phone):
     return digits[:2] + "******" + digits[-2:]
 
 
-def send_email_otp(to_email, code):
-    if not EMAIL_USER or not EMAIL_PASS:
-        raise RuntimeError(
-            "Gmail SMTP is not configured. "
-            "Set MAIL_USERNAME and MAIL_PASSWORD in .env."
-        )
 
-    msg = EmailMessage()
-    msg["Subject"] = "EL BRUSTO - Account Verification OTP"
-    msg["From"] = EMAIL_USER
-    msg["To"] = to_email
-    msg.set_content(
-        f"Your EL BRUSTO verification code is: {code}\n\n"
-        f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
-        "Do not share it with anyone."
+def send_email_otp(to_email, code):
+    api_key = os.getenv("RESEND_API_KEY")
+    email_from = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY is not configured.")
+
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": email_from,
+            "to": [to_email],
+            "subject": "EL BRUSTO - Account Verification OTP",
+            "text": (
+                f"Your EL BRUSTO verification code is: {code}\n\n"
+                f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
+                "Do not share it with anyone."
+            ),
+        },
+        timeout=20,
     )
 
-    import ssl
-
-    context = ssl.create_default_context()
-
-    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=30) as smtp:
-        smtp.ehlo()
-        smtp.starttls(context=context)
-        smtp.ehlo()
-        smtp.login(EMAIL_USER, EMAIL_PASS)
-        smtp.send_message(msg)
+    if not response.ok:
+        raise RuntimeError(
+            f"Resend email failed: HTTP {response.status_code}"
+        )
 
 
 def send_sms_otp(to_phone, code):
@@ -281,7 +278,7 @@ def register_start():
         send_email_otp(email, email_otp)
     except Exception:
         app.logger.exception("Gmail OTP delivery failed")
-        send_error = "Gmail OTP could not be sent. Check MAIL_USERNAME and MAIL_PASSWORD in your .env file, then try Resend OTP."
+        send_error = "Email OTP could not be sent. Check your Resend configuration and try again."
 
     response = {"token": token, "masked_email": mask_email(email)}
     if send_error:
