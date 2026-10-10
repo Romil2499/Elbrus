@@ -20,7 +20,7 @@ load_dotenv()
 
 
 
-app = Flask(\_\_name\_\_, static_folder="static", template_folder="templates")
+app = Flask(__name__, static_folder="static", template_folder="templates")
 
 app.secret_key = os.getenv("SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
 
@@ -30,7 +30,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(\_\_file\_\_))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DB_PATH = os.path.join(BASE_DIR, "el_brusto.db")
 
@@ -66,15 +66,15 @@ DEV_SHOW_OTP = os.getenv("DEV_SHOW_OTP", "false").lower() == "true"
 
 def db():
 
-    if "db" not in g:
+    if "db" not in g:
 
-        g.db = sqlite3.connect(DB_PATH)
+        g.db = sqlite3.connect(DB_PATH)
 
-        g.db.row_factory = sqlite3.Row
+        g.db.row_factory = sqlite3.Row
 
-        g.db.execute("PRAGMA foreign_keys = ON")
+        g.db.execute("PRAGMA foreign_keys = ON")
 
-    return g.db
+    return g.db
 
 
 
@@ -82,201 +82,201 @@ def db():
 
 def close_db(exception=None):
 
-    conn = g.pop("db", None)
+    conn = g.pop("db", None)
 
-    if conn:
+    if conn:
 
-        conn.close()
+        conn.close()
 
 
 
 def init_db():
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
 
-    conn.executescript("""
+    conn.executescript("""
 
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS users (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        first_name TEXT NOT NULL,
+        first_name TEXT NOT NULL,
 
-        last_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
 
-        age INTEGER NOT NULL,
+        age INTEGER NOT NULL,
 
-        email TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
 
-        phone TEXT NOT NULL UNIQUE,
+        phone TEXT NOT NULL UNIQUE,
 
-        address TEXT NOT NULL,
+        address TEXT NOT NULL,
 
-        postal_code TEXT NOT NULL,
+        postal_code TEXT NOT NULL,
 
-        password_hash TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
 
-        email_verified INTEGER NOT NULL DEFAULT 0,
+        email_verified INTEGER NOT NULL DEFAULT 0,
 
-        phone_verified INTEGER NOT NULL DEFAULT 0,
+        phone_verified INTEGER NOT NULL DEFAULT 0,
 
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL
 
-    );
+    );
 
 
 
-    CREATE TABLE IF NOT EXISTS registration_otps (
+    CREATE TABLE IF NOT EXISTS registration_otps (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        token TEXT NOT NULL UNIQUE,
+        token TEXT NOT NULL UNIQUE,
 
-        payload_json TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
 
-        email_hash TEXT NOT NULL,
+        email_hash TEXT NOT NULL,
 
-        phone_hash TEXT NOT NULL,
+        phone_hash TEXT NOT NULL,
 
-        email_otp_hash TEXT NOT NULL,
+        email_otp_hash TEXT NOT NULL,
 
-        phone_otp_hash TEXT NOT NULL,
+        phone_otp_hash TEXT NOT NULL,
 
-        expires_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
 
-        attempts INTEGER NOT NULL DEFAULT 0,
+        attempts INTEGER NOT NULL DEFAULT 0,
 
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL
 
-    );
+    );
 
 
 
-    CREATE TABLE IF NOT EXISTS cart_items (
+    CREATE TABLE IF NOT EXISTS cart_items (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        user_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
 
-        name TEXT NOT NULL,
+        name TEXT NOT NULL,
 
-        price REAL NOT NULL,
+        price REAL NOT NULL,
 
-        image TEXT NOT NULL,
+        image TEXT NOT NULL,
 
-        quantity INTEGER NOT NULL DEFAULT 1,
+        quantity INTEGER NOT NULL DEFAULT 1,
 
-        UNIQUE(user_id, name),
+        UNIQUE(user_id, name),
 
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 
-    );
+    );
 
 
 
-    CREATE TABLE IF NOT EXISTS orders (
+    CREATE TABLE IF NOT EXISTS orders (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        user_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
 
-        address TEXT NOT NULL,
+        address TEXT NOT NULL,
 
-        postal_code TEXT NOT NULL,
+        postal_code TEXT NOT NULL,
 
-        phone TEXT NOT NULL,
+        phone TEXT NOT NULL,
 
-        note TEXT,
+        note TEXT,
 
-        total REAL NOT NULL,
+        total REAL NOT NULL,
 
-        status TEXT NOT NULL DEFAULT 'Pending',
+        status TEXT NOT NULL DEFAULT 'Pending',
 
-        created_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
 
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 
-    );
+    );
 
 
 
-    CREATE TABLE IF NOT EXISTS order_items (
+    CREATE TABLE IF NOT EXISTS order_items (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        order_id INTEGER NOT NULL,
+        order_id INTEGER NOT NULL,
 
-        name TEXT NOT NULL,
+        name TEXT NOT NULL,
 
-        price REAL NOT NULL,
+        price REAL NOT NULL,
 
-        quantity INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
 
-        subtotal REAL NOT NULL,
+        subtotal REAL NOT NULL,
 
-        FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
 
-    );
+    );
 
-    """)
+    """)
 
-    conn.commit()
+    conn.commit()
 
-    conn.close()
+    conn.close()
 
 
 
 def now():
 
-    return datetime.utcnow()
+    return datetime.utcnow()
 
 
 
 def normalize_phone(phone):
 
-    p = re.sub(r"\D", "", str(phone or ""))
+    p = re.sub(r"\D", "", str(phone or ""))
 
-    if p.startswith("09") and len(p) == 11:
+    if p.startswith("09") and len(p) == 11:
 
-        return "+63" + p[1:]
+        return "+63" + p[1:]
 
-    if p.startswith("63") and len(p) == 12:
+    if p.startswith("63") and len(p) == 12:
 
-        return "+" + p
+        return "+" + p
 
-    if p.startswith("+63") and len(p) == 13:
+    if p.startswith("+63") and len(p) == 13:
 
-        return p
+        return p
 
-    return None
+    return None
 
 
 
 def hash_otp(code):
 
-    return hashlib.sha256(code.encode()).hexdigest()
+    return hashlib.sha256(code.encode()).hexdigest()
 
 
 
 def make_otp():
 
-    return f"{secrets.randbelow(1000000):06d}"
+    return f"{secrets.randbelow(1000000):06d}"
 
 
 
 def mask_email(email):
 
-    name, domain = email.split("@", 1)
+    name, domain = email.split("@", 1)
 
-    return (name[:2] + "\*\*\*" if len(name) > 2 else "\*\*\*") + "@" + domain
+    return (name[:2] + "***" if len(name) > 2 else "***") + "@" + domain
 
 
 
 def mask_phone(phone):
 
-    digits = re.sub(r"\D", "", phone)
+    digits = re.sub(r"\D", "", phone)
 
-    return digits[:2] + "\*\*\*\*\*\*" + digits[-2:]
+    return digits[:2] + "******" + digits[-2:]
 
 
 
@@ -284,57 +284,57 @@ def mask_phone(phone):
 
 def send_email_otp(to_email, code):
 
-    if not EMAIL_USER or not EMAIL_PASS:
+    if not EMAIL_USER or not EMAIL_PASS:
 
-        raise RuntimeError(
+        raise RuntimeError(
 
-            "Gmail SMTP is not configured. "
+            "Gmail SMTP is not configured. "
 
-            "Set MAIL_USERNAME and MAIL_PASSWORD in .env."
+            "Set MAIL_USERNAME and MAIL_PASSWORD in .env."
 
-        )
-
-
-
-    msg = EmailMessage()
-
-    msg["Subject"] = "EL BRUSTO - Account Verification OTP"
-
-    msg["From"] = EMAIL_USER
-
-    msg["To"] = to_email
-
-    msg.set_content(
-
-        f"Your EL BRUSTO verification code is: {code}\n\n"
-
-        f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
-
-        "Do not share it with anyone."
-
-    )
+        )
 
 
 
-    import ssl
+    msg = EmailMessage()
+
+    msg["Subject"] = "EL BRUSTO - Account Verification OTP"
+
+    msg["From"] = EMAIL_USER
+
+    msg["To"] = to_email
+
+    msg.set_content(
+
+        f"Your EL BRUSTO verification code is: {code}\n\n"
+
+        f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
+
+        "Do not share it with anyone."
+
+    )
 
 
 
-    context = ssl.create_default_context()
+    import ssl
 
 
 
-    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=30) as smtp:
+    context = ssl.create_default_context()
 
-        smtp.ehlo()
 
-        smtp.starttls(context=context)
 
-        smtp.ehlo()
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=30) as smtp:
 
-        smtp.login(EMAIL_USER, EMAIL_PASS)
+        smtp.ehlo()
 
-        smtp.send_message(msg)
+        smtp.starttls(context=context)
+
+        smtp.ehlo()
+
+        smtp.login(EMAIL_USER, EMAIL_PASS)
+
+        smtp.send_message(msg)
 
 
 
@@ -342,39 +342,39 @@ def send_email_otp(to_email, code):
 
 def send_sms_otp(to_phone, code):
 
-    if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM]):
+    if not all([TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM]):
 
-        raise RuntimeError("SMS OTP is not configured. Set Twilio credentials in .env.")
+        raise RuntimeError("SMS OTP is not configured. Set Twilio credentials in .env.")
 
-    from twilio.rest import Client
+    from twilio.rest import Client
 
-    Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
+    Client(TWILIO_SID, TWILIO_TOKEN).messages.create(
 
-        body=f"EL BRUSTO verification code: {code}. Expires in {OTP_EXPIRY_MINUTES} minutes.",
+        body=f"EL BRUSTO verification code: {code}. Expires in {OTP_EXPIRY_MINUTES} minutes.",
 
-        from\_=TWILIO_FROM,
+        from_=TWILIO_FROM,
 
-        to=to_phone
+        to=to_phone
 
-    )
+    )
 
 
 
 def login_required(fn):
 
-    @wraps(fn)
+    @wraps(fn)
 
-    def wrapped(\*args, \*\*kwargs):
+    def wrapped(*args, **kwargs):
 
-        uid = session.get("user_id")
+        uid = session.get("user_id")
 
-        if not uid:
+        if not uid:
 
-            return jsonify(error="LOGIN_REQUIRED"), 401
+            return jsonify(error="LOGIN_REQUIRED"), 401
 
-        return fn(\*args, \*\*kwargs)
+        return fn(*args, **kwargs)
 
-    return wrapped
+    return wrapped
 
 
 
@@ -382,7 +382,7 @@ def login_required(fn):
 
 def index():
 
-    return render_template("index.html")
+    return render_template("index.html")
 
 
 
@@ -390,129 +390,129 @@ def index():
 
 def register_start():
 
-    data = request.get_json(force=True)
+    data = request.get_json(force=True)
 
-    required = ["first_name","last_name","age","email","phone","address","postal_code","password","confirm_password"]
+    required = ["first_name","last_name","age","email","phone","address","postal_code","password","confirm_password"]
 
-    if any(not str(data.get(k, "")).strip() for k in required):
+    if any(not str(data.get(k, "")).strip() for k in required):
 
-        return jsonify(error="Please complete all registration fields."), 400
+        return jsonify(error="Please complete all registration fields."), 400
 
-    if data["password"] != data["confirm_password"]:
+    if data["password"] != data["confirm_password"]:
 
-        return jsonify(error="Passwords do not match."), 400
+        return jsonify(error="Passwords do not match."), 400
 
-    if len(data["password"]) < 8:
+    if len(data["password"]) < 8:
 
-        return jsonify(error="Password must be at least 8 characters."), 400
+        return jsonify(error="Password must be at least 8 characters."), 400
 
-    try:
+    try:
 
-        age = int(data["age"])
+        age = int(data["age"])
 
-    except ValueError:
+    except ValueError:
 
-        return jsonify(error="Age must be a number."), 400
+        return jsonify(error="Age must be a number."), 400
 
-    if age < 1 or age > 120:
+    if age < 1 or age > 120:
 
-        return jsonify(error="Please enter a valid age."), 400
+        return jsonify(error="Please enter a valid age."), 400
 
 
 
-    email = str(data["email"]).strip().lower()
+    email = str(data["email"]).strip().lower()
 
-    phone = normalize_phone(data["phone"])
+    phone = normalize_phone(data["phone"])
 
-    if not phone:
+    if not phone:
 
-        return jsonify(error="Enter a valid Philippine mobile number such as 09XXXXXXXXX."), 400
+        return jsonify(error="Enter a valid Philippine mobile number such as 09XXXXXXXXX."), 400
 
 
 
-    conn = db()
+    conn = db()
 
-    if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+    if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
 
-        return jsonify(error="An account with that email already exists."), 400
+        return jsonify(error="An account with that email already exists."), 400
 
-    if conn.execute("SELECT id FROM users WHERE phone=?", (phone,)).fetchone():
+    if conn.execute("SELECT id FROM users WHERE phone=?", (phone,)).fetchone():
 
-        return jsonify(error="An account with that phone number already exists."), 400
+        return jsonify(error="An account with that phone number already exists."), 400
 
 
 
-    email_otp, phone_otp = make_otp(), make_otp()
+    email_otp, phone_otp = make_otp(), make_otp()
 
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(32)
 
-    payload = {
+    payload = {
 
-        "first_name": str(data["first_name"]).strip(),
+        "first_name": str(data["first_name"]).strip(),
 
-        "last_name": str(data["last_name"]).strip(),
+        "last_name": str(data["last_name"]).strip(),
 
-        "age": age,
+        "age": age,
 
-        "email": email,
+        "email": email,
 
-        "phone": phone,
+        "phone": phone,
 
-        "address": str(data["address"]).strip(),
+        "address": str(data["address"]).strip(),
 
-        "postal_code": str(data["postal_code"]).strip(),
+        "postal_code": str(data["postal_code"]).strip(),
 
-        "password_hash": generate_password_hash(data["password"])
+        "password_hash": generate_password_hash(data["password"])
 
-    }
+    }
 
-    expires = now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    expires = now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
-    conn.execute("DELETE FROM registration_otps WHERE expires_at < ?", (now().isoformat(),))
+    conn.execute("DELETE FROM registration_otps WHERE expires_at < ?", (now().isoformat(),))
 
-    conn.execute(
+    conn.execute(
 
-        """INSERT INTO registration_otps
+        """INSERT INTO registration_otps
 
-        (token,payload_json,email_hash,phone_hash,email_otp_hash,phone_otp_hash,expires_at,created_at)
+        (token,payload_json,email_hash,phone_hash,email_otp_hash,phone_otp_hash,expires_at,created_at)
 
-        VALUES (?,?,?,?,?,?,?,?)""",
+        VALUES (?,?,?,?,?,?,?,?)""",
 
-        (token, \_\_import\_\_("json").dumps(payload), hash_otp(email), hash_otp(phone),
+        (token, __import__("json").dumps(payload), hash_otp(email), hash_otp(phone),
 
-         hash_otp(email_otp), hash_otp(phone_otp), expires.isoformat(), now().isoformat())
+         hash_otp(email_otp), hash_otp(phone_otp), expires.isoformat(), now().isoformat())
 
-    )
+    )
 
-    conn.commit()
+    conn.commit()
 
 
 
-    send_error = None
+    send_error = None
 
-    try:
+    try:
 
-        send_email_otp(email, email_otp)
+        send_email_otp(email, email_otp)
 
-    except Exception:
+    except Exception:
 
-        app.logger.exception("Gmail OTP delivery failed")
+        app.logger.exception("Gmail OTP delivery failed")
 
-        send_error = "Gmail OTP could not be sent. Check MAIL_USERNAME and MAIL_PASSWORD in your .env file, then try Resend OTP."
+        send_error = "Gmail OTP could not be sent. Check MAIL_USERNAME and MAIL_PASSWORD in your .env file, then try Resend OTP."
 
 
 
-    response = {"token": token, "masked_email": mask_email(email)}
+    response = {"token": token, "masked_email": mask_email(email)}
 
-    if send_error:
+    if send_error:
 
-        response["delivery_error"] = send_error
+        response["delivery_error"] = send_error
 
-    if DEV_SHOW_OTP:
+    if DEV_SHOW_OTP:
 
-        response["dev_email_otp"] = email_otp
+        response["dev_email_otp"] = email_otp
 
-    return jsonify(response), 200
+    return jsonify(response), 200
 
 
 
@@ -520,55 +520,55 @@ def register_start():
 
 def register_resend():
 
-    data = request.get_json(force=True)
+    data = request.get_json(force=True)
 
-    row = db().execute("SELECT \* FROM registration_otps WHERE token=?", (data.get("token"),)).fetchone()
+    row = db().execute("SELECT * FROM registration_otps WHERE token=?", (data.get("token"),)).fetchone()
 
-    if not row:
+    if not row:
 
-        return jsonify(error="Registration session expired. Start again."), 400
+        return jsonify(error="Registration session expired. Start again."), 400
 
-    import json
+    import json
 
-    payload = json.loads(row["payload_json"])
+    payload = json.loads(row["payload_json"])
 
-    email_otp, phone_otp = make_otp(), make_otp()
+    email_otp, phone_otp = make_otp(), make_otp()
 
-    expires = now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    expires = now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
 
-    db().execute(
+    db().execute(
 
-        "UPDATE registration_otps SET email_otp_hash=?, phone_otp_hash=?, expires_at=?, attempts=0 WHERE token=?",
+        "UPDATE registration_otps SET email_otp_hash=?, phone_otp_hash=?, expires_at=?, attempts=0 WHERE token=?",
 
-        (hash_otp(email_otp), hash_otp(phone_otp), expires.isoformat(), row["token"])
+        (hash_otp(email_otp), hash_otp(phone_otp), expires.isoformat(), row["token"])
 
-    )
+    )
 
-    db().commit()
+    db().commit()
 
-    send_error = None
+    send_error = None
 
-    try:
+    try:
 
-        send_email_otp(payload["email"], email_otp)
+        send_email_otp(payload["email"], email_otp)
 
-    except Exception:
+    except Exception:
 
-        app.logger.exception("Gmail OTP resend failed")
+        app.logger.exception("Gmail OTP resend failed")
 
-        send_error = "Gmail OTP could not be sent. Check your Gmail SMTP settings in .env and try again."
+        send_error = "Gmail OTP could not be sent. Check your Gmail SMTP settings in .env and try again."
 
-    response = {"token":row["token"], "masked_email":mask_email(payload["email"])}
+    response = {"token":row["token"], "masked_email":mask_email(payload["email"])}
 
-    if send_error:
+    if send_error:
 
-        response["delivery_error"] = send_error
+        response["delivery_error"] = send_error
 
-    if DEV_SHOW_OTP:
+    if DEV_SHOW_OTP:
 
-        response["dev_email_otp"] = email_otp
+        response["dev_email_otp"] = email_otp
 
-    return jsonify(response)
+    return jsonify(response)
 
 
 
@@ -576,59 +576,59 @@ def register_resend():
 
 def register_verify():
 
-    data = request.get_json(force=True)
+    data = request.get_json(force=True)
 
-    row = db().execute("SELECT \* FROM registration_otps WHERE token=?", (data.get("token"),)).fetchone()
+    row = db().execute("SELECT * FROM registration_otps WHERE token=?", (data.get("token"),)).fetchone()
 
-    if not row:
+    if not row:
 
-        return jsonify(error="Registration session expired. Start again."), 400
+        return jsonify(error="Registration session expired. Start again."), 400
 
-    if datetime.fromisoformat(row["expires_at"]) < now():
+    if datetime.fromisoformat(row["expires_at"]) < now():
 
-        return jsonify(error="OTP expired. Request a new OTP."), 400
+        return jsonify(error="OTP expired. Request a new OTP."), 400
 
-    if row["attempts"] >= 5:
+    if row["attempts"] >= 5:
 
-        return jsonify(error="Too many incorrect OTP attempts. Request a new OTP."), 429
+        return jsonify(error="Too many incorrect OTP attempts. Request a new OTP."), 429
 
-    if not re.fullmatch(r"\d{6}", str(data.get("email_otp", ""))) or hash_otp(str(data.get("email_otp",""))) != row["email_otp_hash"]:
+    if not re.fullmatch(r"\d{6}", str(data.get("email_otp", ""))) or hash_otp(str(data.get("email_otp",""))) != row["email_otp_hash"]:
 
-        db().execute("UPDATE registration_otps SET attempts=attempts+1 WHERE token=?", (row["token"],))
+        db().execute("UPDATE registration_otps SET attempts=attempts+1 WHERE token=?", (row["token"],))
 
-        db().commit()
+        db().commit()
 
-        return jsonify(error="One or both OTP codes are incorrect."), 400
+        return jsonify(error="One or both OTP codes are incorrect."), 400
 
 
 
-    import json
+    import json
 
-    p = json.loads(row["payload_json"])
+    p = json.loads(row["payload_json"])
 
-    try:
+    try:
 
-        db().execute(
+        db().execute(
 
-            """INSERT INTO users
+            """INSERT INTO users
 
-            (first_name,last_name,age,email,phone,address,postal_code,password_hash,email_verified,phone_verified,created_at)
+            (first_name,last_name,age,email,phone,address,postal_code,password_hash,email_verified,phone_verified,created_at)
 
-            VALUES (?,?,?,?,?,?,?,?,1,1,?)""",
+            VALUES (?,?,?,?,?,?,?,?,1,1,?)""",
 
-            (p["first_name"],p["last_name"],p["age"],p["email"],p["phone"],p["address"],p["postal_code"],p["password_hash"],now().isoformat())
+            (p["first_name"],p["last_name"],p["age"],p["email"],p["phone"],p["address"],p["postal_code"],p["password_hash"],now().isoformat())
 
-        )
+        )
 
-        db().execute("DELETE FROM registration_otps WHERE token=?", (row["token"],))
+        db().execute("DELETE FROM registration_otps WHERE token=?", (row["token"],))
 
-        db().commit()
+        db().commit()
 
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError:
 
-        return jsonify(error="Email or phone number is already registered."), 400
+        return jsonify(error="Email or phone number is already registered."), 400
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -636,25 +636,25 @@ def register_verify():
 
 def login():
 
-    data = request.get_json(force=True)
+    data = request.get_json(force=True)
 
-    email = str(data.get("email","")).strip().lower()
+    email = str(data.get("email","")).strip().lower()
 
-    user = db().execute("SELECT \* FROM users WHERE email=?", (email,)).fetchone()
+    user = db().execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
 
-    if not user or not check_password_hash(user["password_hash"], str(data.get("password",""))):
+    if not user or not check_password_hash(user["password_hash"], str(data.get("password",""))):
 
-        return jsonify(error="Incorrect email or password."), 401
+        return jsonify(error="Incorrect email or password."), 401
 
-    if not user["email_verified"] or not user["phone_verified"]:
+    if not user["email_verified"] or not user["phone_verified"]:
 
-        return jsonify(error="This account has not completed verification."), 403
+        return jsonify(error="This account has not completed verification."), 403
 
-    session.clear()
+    session.clear()
 
-    session["user_id"] = user["id"]
+    session["user_id"] = user["id"]
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -662,19 +662,19 @@ def login():
 
 def logout():
 
-    session.clear()
+    session.clear()
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
 def user_row():
 
-    uid=session.get("user_id")
+    uid=session.get("user_id")
 
-    if not uid: return None
+    if not uid: return None
 
-    return db().execute("SELECT \* FROM users WHERE id=?", (uid,)).fetchone()
+    return db().execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
 
 
 
@@ -682,19 +682,19 @@ def user_row():
 
 def me():
 
-    u=user_row()
+    u=user_row()
 
-    if not u: return jsonify(logged_in=False)
+    if not u: return jsonify(logged_in=False)
 
-    return jsonify(logged_in=True,user={
+    return jsonify(logged_in=True,user={
 
-        "id":u["id"],"first_name":u["first_name"],"last_name":u["last_name"],
+        "id":u["id"],"first_name":u["first_name"],"last_name":u["last_name"],
 
-        "age":u["age"],"email":u["email"],"phone":u["phone"],
+        "age":u["age"],"email":u["email"],"phone":u["phone"],
 
-        "address":u["address"],"postal_code":u["postal_code"]
+        "address":u["address"],"postal_code":u["postal_code"]
 
-    })
+    })
 
 
 
@@ -704,31 +704,31 @@ def me():
 
 def profile_update():
 
-    d=request.get_json(force=True)
+    d=request.get_json(force=True)
 
-    first=str(d.get("first_name","")).strip()
+    first=str(d.get("first_name","")).strip()
 
-    last=str(d.get("last_name","")).strip()
+    last=str(d.get("last_name","")).strip()
 
-    address=str(d.get("address","")).strip()
+    address=str(d.get("address","")).strip()
 
-    postal=str(d.get("postal_code","")).strip()
+    postal=str(d.get("postal_code","")).strip()
 
-    try: age=int(d.get("age"))
+    try: age=int(d.get("age"))
 
-    except: return jsonify(error="Age must be a number."),400
+    except: return jsonify(error="Age must be a number."),400
 
-    if not first or not last or not address or not postal or not (1<=age<=120):
+    if not first or not last or not address or not postal or not (1<=age<=120):
 
-        return jsonify(error="Please complete the profile fields."),400
+        return jsonify(error="Please complete the profile fields."),400
 
-    db().execute("UPDATE users SET first_name=?,last_name=?,age=?,address=?,postal_code=? WHERE id=?",
+    db().execute("UPDATE users SET first_name=?,last_name=?,age=?,address=?,postal_code=? WHERE id=?",
 
-                 (first,last,age,address,postal,session["user_id"]))
+                 (first,last,age,address,postal,session["user_id"]))
 
-    db().commit()
+    db().commit()
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -738,19 +738,19 @@ def profile_update():
 
 def get_cart():
 
-    rows=db().execute("SELECT \* FROM cart_items WHERE user_id=? ORDER BY id", (session["user_id"],)).fetchall()
+    rows=db().execute("SELECT * FROM cart_items WHERE user_id=? ORDER BY id", (session["user_id"],)).fetchall()
 
-    items=[]
+    items=[]
 
-    total=0
+    total=0
 
-    for r in rows:
+    for r in rows:
 
-        subtotal=r["price"]\*r["quantity"]; total+=subtotal
+        subtotal=r["price"]*r["quantity"]; total+=subtotal
 
-        items.append({"id":r["id"],"name":r["name"],"price":r["price"],"image":r["image"],"quantity":r["quantity"],"subtotal":subtotal})
+        items.append({"id":r["id"],"name":r["name"],"price":r["price"],"image":r["image"],"quantity":r["quantity"],"subtotal":subtotal})
 
-    return jsonify(items=items,total=total)
+    return jsonify(items=items,total=total)
 
 
 
@@ -760,29 +760,29 @@ def get_cart():
 
 def add_cart():
 
-    d=request.get_json(force=True)
+    d=request.get_json(force=True)
 
-    try: price=float(d["price"])
+    try: price=float(d["price"])
 
-    except: return jsonify(error="Invalid product price."),400
+    except: return jsonify(error="Invalid product price."),400
 
-    name=str(d.get("name","")).strip()
+    name=str(d.get("name","")).strip()
 
-    image=str(d.get("image","")).strip()
+    image=str(d.get("image","")).strip()
 
-    if not name or not image or price<=0:return jsonify(error="Invalid product."),400
+    if not name or not image or price<=0:return jsonify(error="Invalid product."),400
 
-    conn=db()
+    conn=db()
 
-    row=conn.execute("SELECT id FROM cart_items WHERE user_id=? AND name=?", (session["user_id"],name)).fetchone()
+    row=conn.execute("SELECT id FROM cart_items WHERE user_id=? AND name=?", (session["user_id"],name)).fetchone()
 
-    if row: conn.execute("UPDATE cart_items SET quantity=quantity+1 WHERE id=?", (row["id"],))
+    if row: conn.execute("UPDATE cart_items SET quantity=quantity+1 WHERE id=?", (row["id"],))
 
-    else: conn.execute("INSERT INTO cart_items(user_id,name,price,image,quantity) VALUES(?,?,?,?,1)", (session["user_id"],name,price,image))
+    else: conn.execute("INSERT INTO cart_items(user_id,name,price,image,quantity) VALUES(?,?,?,?,1)", (session["user_id"],name,price,image))
 
-    conn.commit()
+    conn.commit()
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -792,19 +792,19 @@ def add_cart():
 
 def update_cart(item_id):
 
-    q=int(request.get_json(force=True).get("quantity",1))
+    q=int(request.get_json(force=True).get("quantity",1))
 
-    if q<=0:
+    if q<=0:
 
-        db().execute("DELETE FROM cart_items WHERE id=? AND user_id=?", (item_id,session["user_id"]))
+        db().execute("DELETE FROM cart_items WHERE id=? AND user_id=?", (item_id,session["user_id"]))
 
-    else:
+    else:
 
-        db().execute("UPDATE cart_items SET quantity=? WHERE id=? AND user_id=?", (q,item_id,session["user_id"]))
+        db().execute("UPDATE cart_items SET quantity=? WHERE id=? AND user_id=?", (q,item_id,session["user_id"]))
 
-    db().commit()
+    db().commit()
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -814,11 +814,11 @@ def update_cart(item_id):
 
 def delete_cart(item_id):
 
-    db().execute("DELETE FROM cart_items WHERE id=? AND user_id=?", (item_id,session["user_id"]))
+    db().execute("DELETE FROM cart_items WHERE id=? AND user_id=?", (item_id,session["user_id"]))
 
-    db().commit()
+    db().commit()
 
-    return jsonify(ok=True)
+    return jsonify(ok=True)
 
 
 
@@ -828,45 +828,45 @@ def delete_cart(item_id):
 
 def create_order():
 
-    d=request.get_json(force=True)
+    d=request.get_json(force=True)
 
-    address=str(d.get("address","")).strip()
+    address=str(d.get("address","")).strip()
 
-    postal=str(d.get("postal_code","")).strip()
+    postal=str(d.get("postal_code","")).strip()
 
-    phone=normalize_phone(d.get("phone"))
+    phone=normalize_phone(d.get("phone"))
 
-    note=str(d.get("note","")).strip()
+    note=str(d.get("note","")).strip()
 
-    if not address or not postal or not phone:
+    if not address or not postal or not phone:
 
-        return jsonify(error="Please complete the checkout details."),400
+        return jsonify(error="Please complete the checkout details."),400
 
-    conn=db()
+    conn=db()
 
-    items=conn.execute("SELECT \* FROM cart_items WHERE user_id=?", (session["user_id"],)).fetchall()
+    items=conn.execute("SELECT * FROM cart_items WHERE user_id=?", (session["user_id"],)).fetchall()
 
-    if not items:return jsonify(error="Your cart is empty."),400
+    if not items:return jsonify(error="Your cart is empty."),400
 
-    total=sum(r["price"]\*r["quantity"] for r in items)
+    total=sum(r["price"]*r["quantity"] for r in items)
 
-    cur=conn.execute("INSERT INTO orders(user_id,address,postal_code,phone,note,total,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
+    cur=conn.execute("INSERT INTO orders(user_id,address,postal_code,phone,note,total,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
 
-                      (session["user_id"],address,postal,phone,note,total,"Pending",now().isoformat()))
+                      (session["user_id"],address,postal,phone,note,total,"Pending",now().isoformat()))
 
-    order_id=cur.lastrowid
+    order_id=cur.lastrowid
 
-    for r in items:
+    for r in items:
 
-        conn.execute("INSERT INTO order_items(order_id,name,price,quantity,subtotal) VALUES(?,?,?,?,?)",
+        conn.execute("INSERT INTO order_items(order_id,name,price,quantity,subtotal) VALUES(?,?,?,?,?)",
 
-                     (order_id,r["name"],r["price"],r["quantity"],r["price"]\*r["quantity"]))
+                     (order_id,r["name"],r["price"],r["quantity"],r["price"]*r["quantity"]))
 
-    conn.execute("DELETE FROM cart_items WHERE user_id=?", (session["user_id"],))
+    conn.execute("DELETE FROM cart_items WHERE user_id=?", (session["user_id"],))
 
-    conn.commit()
+    conn.commit()
 
-    return jsonify(ok=True,order_id=order_id,total=total)
+    return jsonify(ok=True,order_id=order_id,total=total)
 
 
 
@@ -876,14 +876,14 @@ def create_order():
 
 def orders():
 
-    rows=db().execute("SELECT \* FROM orders WHERE user_id=? ORDER BY id DESC", (session["user_id"],)).fetchall()
+    rows=db().execute("SELECT * FROM orders WHERE user_id=? ORDER BY id DESC", (session["user_id"],)).fetchall()
 
-    return jsonify(orders=[dict(r) for r in rows])
+    return jsonify(orders=[dict(r) for r in rows])
 
 
 
-if \_\_name\_\_ == "\_\_main\_\_":
+if __name__ == "__main__":
 
-    init_db()
+    init_db()
 
-    app.run(host="127.0.0.1", port=int(os.getenv("PORT","5000")), debug=True)
+    app.run(host="127.0.0.1", port=int(os.getenv("PORT","5000")), debug=True)
