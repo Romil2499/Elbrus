@@ -276,7 +276,7 @@ def register_start():
     try:
         send_email_otp(email, email_otp)
     except Exception:
-        app.logger.exception("Gmail OTP delivery failed")
+        app.logger.exception("Resend OTP delivery failed")
         send_error = "Email OTP could not be sent. Check your Resend configuration and try again."
 
     response = {"token": token, "masked_email": mask_email(email)}
