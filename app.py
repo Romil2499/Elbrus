@@ -305,8 +305,8 @@ def register_resend():
     try:
         send_email_otp(payload["email"], email_otp)
     except Exception:
-        app.logger.exception("Gmail OTP resend failed")
-        send_error = "Gmail OTP could not be sent. Check your Gmail SMTP settings in .env and try again."
+        app.logger.exception("Resend OTP resend failed")
+        send_error = "Email OTP could not be sent. Check your Resend configuration and try again."
     response = {"token":row["token"], "masked_email":mask_email(payload["email"])}
     if send_error:
         response["delivery_error"] = send_error
