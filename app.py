@@ -26,7 +26,7 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 print("Resend API key configured:", bool(RESEND_API_KEY))
 print("Resend sender:", RESEND_FROM)
-OTP_EXPIRY_MINUTES = 10
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 DEV_SHOW_OTP = os.getenv("DEV_SHOW_OTP", "false").lower() == "true"
 
 def db():
@@ -181,7 +181,7 @@ def send_email_otp(to_email, code):
             "to": [to_email],
             "subject": "EL BRUSTO - Account Verification OTP",
             "text": (
-                f"Your EL BRUSTO verification code is: {code}\\n\\n"
+                f"Your EL BRUSTO verification code is: {code}\n\n"
                 f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
                 "Do not share it with anyone."
             ),
@@ -357,7 +357,7 @@ def login():
         send_email_otp(user["email"], code)
     except Exception:
         app.logger.exception("Login OTP delivery failed")
-        return jsonify(error="Hindi naipadala ang login code sa Gmail. Tingnan ang .env SMTP settings at subukan ulit."), 503
+        return jsonify(error="Hindi naipadala ang login code. Tingnan ang RESEND_API_KEY at RESEND_FROM sa Render Environment at subukan ulit."), 503
     session.clear()
     session["pending_login"] = {"user_id": user["id"], "token": token, "otp_hash": hash_otp(code),
                                  "expires_at": expires.isoformat(), "attempts": 0}
