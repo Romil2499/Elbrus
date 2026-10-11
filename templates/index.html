@@ -2779,26 +2779,6 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
 <script>
 (() => {
   const nav = document.querySelector("nav");
-  if (nav && nav.querySelector("ul") && !nav.querySelector(".mobile-nav-toggle")) {
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "mobile-nav-toggle";
-    toggle.textContent = "☰";
-    toggle.setAttribute("aria-label", "Open navigation menu");
-    toggle.setAttribute("aria-expanded", "false");
-    nav.insertBefore(toggle, nav.querySelector("ul"));
-    toggle.addEventListener("click", () => {
-      const open = nav.classList.toggle("mobile-menu-open");
-      toggle.textContent = open ? "✕" : "☰";
-      toggle.setAttribute("aria-expanded", String(open));
-      toggle.setAttribute("aria-label", open ? "Close navigation menu" : "Open navigation menu");
-    });
-    nav.querySelectorAll("ul a").forEach(link => link.addEventListener("click", () => {
-      nav.classList.remove("mobile-menu-open");
-      toggle.textContent = "☰";
-      toggle.setAttribute("aria-expanded", "false");
-    }));
-  }
   const api = (url, options={}) => fetch(url, {
     credentials: "same-origin",
     headers: {"Content-Type":"application/json", ...(options.headers||{})},
@@ -2812,16 +2792,6 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   /* ---------- UI helpers ---------- */
   const style = document.createElement("style");
   style.textContent = `
-  .mobile-nav-toggle{display:none;width:40px;height:40px;flex:0 0 40px;border:1px solid #c99448;border-radius:50%;background:#54130f;color:#fff1d9;font-size:21px;cursor:pointer}
-  @media(max-width:760px){
-    nav{position:sticky;top:0;z-index:1200;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
-    nav ul{display:none!important;position:absolute;left:10px;right:10px;top:calc(100% + 8px);padding:12px;flex-direction:column;gap:0;background:rgba(43,8,7,.98);border:1px solid rgba(217,173,104,.6);border-radius:16px;box-shadow:0 15px 35px #0008}
-    nav.mobile-menu-open ul{display:flex!important}nav ul li{width:100%}nav ul li a{display:block;padding:12px 10px}nav ul a:after{display:none}
-    .mobile-nav-toggle{display:grid;place-items:center}.shop-actions{gap:6px!important}.cart-toggle,.account-toggle{font-size:11px;padding:8px 9px!important;white-space:nowrap}
-    .cart-box,.account-box,.checkout-box{width:100%;max-height:85dvh;overflow:auto;padding:20px 15px}
-    .cart-item{grid-template-columns:48px minmax(0,1fr);gap:8px}.cart-item-image{width:48px;height:48px}.quantity-controls{grid-column:2}
-  }
-  @media(max-width:380px){nav{padding:8px}.nav-logo{font-size:17px}.mobile-nav-toggle{width:36px;height:36px;flex-basis:36px}.cart-toggle,.account-toggle{font-size:10px;padding:7px!important}.cart-box h2,.account-box h2,.checkout-box h2{font-size:28px}}
   .shop-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .cart-toggle,.account-toggle{padding:9px 14px;border:1px solid #c99448;border-radius:24px;background:transparent;color:#f8ead3;font-weight:800;cursor:pointer}
   .cart-toggle{background:#e7b052;color:#3d130e}
@@ -2904,15 +2874,32 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
       <button class="btn" type="submit">LOG IN</button>
     </form>
     <p class="account-switch">New customer? <button type="button" id="go-signup">Create an account</button></p>
-    <p class="notice">Your account and orders are stored securely in the project's SQLite database.</p>`;
+    <p class="notice">For your security, we'll send a one-time verification code to your Gmail after your password is accepted.</p>`;
     passwordWrap(accountContent.querySelector('input[type=password]'));
     accountContent.querySelector("#go-signup").onclick=signupView;
     accountContent.querySelector("form").onsubmit=async e=>{
-      e.preventDefault();setStatus("Logging in...");
-      try{await api("/api/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
-        setStatus("Login successful.",true);await refreshSession();setTimeout(closeAccount,400);
+      e.preventDefault();setStatus("Checking login and sending Gmail code...");
+      try{
+        const result=await api("/api/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
+        if(result.otp_required){loginOtpView(result.token,result.masked_email);setStatus(`Verification code sent to ${result.masked_email}. It expires in 5 minutes.`);}
       }catch(err){setStatus(err.message)}
     };
+  }
+  function loginOtpView(token,maskedEmail){
+    accountContent.innerHTML=`<form class="account-form" id="login-otp-form">
+      <p>Enter the 6-digit code sent to <b>${escapeHtml(maskedEmail)}</b>.</p>
+      <label>Gmail verification code</label><input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+      <button class="btn" type="submit">VERIFY AND LOG IN</button>
+      <button class="link-btn" type="button" id="resend-login-otp">Resend code</button>
+      <button class="link-btn" type="button" id="back-login">Back to login</button>
+    </form>`;
+    accountContent.querySelector("#login-otp-form").onsubmit=async e=>{
+      e.preventDefault();setStatus("Verifying code...");
+      try{await api("/api/login/verify",{method:"POST",body:JSON.stringify({token,otp:new FormData(e.currentTarget).get("otp")})});setStatus("Login successful.",true);await refreshSession();setTimeout(closeAccount,450);}
+      catch(err){setStatus(err.message)}
+    };
+    accountContent.querySelector("#resend-login-otp").onclick=async()=>{setStatus("Sending a new code...");try{const r=await api("/api/login/resend",{method:"POST",body:"{}"});setStatus(`New code sent to ${r.masked_email}.`,true);}catch(err){setStatus(err.message)}};
+    accountContent.querySelector("#back-login").onclick=loginView;
   }
 
   function markInvalid(input, message){
@@ -3135,8 +3122,15 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     }catch(e){alert(e.message)}
   }
   cartOverlay.querySelector("#checkout-btn").onclick=openCheckout;
-  checkoutOverlay.querySelector("#checkout-close").onclick=()=>checkoutOverlay.hidden=true;
-  checkoutOverlay.addEventListener("click",e=>{if(e.target===checkoutOverlay)checkoutOverlay.hidden=true});
+  function resetCheckoutView(){
+    const form=checkoutOverlay.querySelector("#checkout-form");
+    form.hidden=false;form.reset();
+    checkoutOverlay.querySelector("#checkout-status").textContent="";
+    checkoutOverlay.querySelector("#checkout-status").classList.remove("success");
+    checkoutOverlay.querySelector("#checkout-summary").innerHTML="";
+  }
+  checkoutOverlay.querySelector("#checkout-close").onclick=()=>{checkoutOverlay.hidden=true;resetCheckoutView()};
+  checkoutOverlay.addEventListener("click",e=>{if(e.target===checkoutOverlay){checkoutOverlay.hidden=true;resetCheckoutView()}});
   checkoutOverlay.querySelector("#checkout-form").onsubmit=async e=>{
     e.preventDefault();
     const status=checkoutOverlay.querySelector("#checkout-status");status.textContent="Placing order...";
@@ -3148,8 +3142,11 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
       checkoutOverlay.querySelector("#checkout-summary").innerHTML=
         `<div style="text-align:center;padding:14px 4px"><div style="font-size:42px">✓</div><h3 style="color:#19733b;margin:8px 0">DONE!</h3><p>Your order <b>#${order.order_id}</b> has been saved.</p><p style="margin:8px 0">You can track its status and estimated delivery in My Orders.</p><button type="button" class="btn" id="success-orders-btn" style="margin:12px 6px 0">TRACK MY ORDER</button><button type="button" class="btn" id="success-done-btn" style="margin:12px 6px 0">DONE</button></div>`;
       e.currentTarget.reset();await loadCart();
-      checkoutOverlay.querySelector("#success-orders-btn").onclick=async()=>{checkoutOverlay.hidden=true;form.hidden=false;await showMyOrders()};
-      checkoutOverlay.querySelector("#success-done-btn").onclick=()=>{checkoutOverlay.hidden=true;form.hidden=false;status.textContent="";status.classList.remove("success")};
+      let returnHomeTimer=window.setTimeout(()=>{
+        checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;
+      },2500);
+      checkoutOverlay.querySelector("#success-orders-btn").onclick=async()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;await showMyOrders()};
+      checkoutOverlay.querySelector("#success-done-btn").onclick=()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true};
     }catch(err){status.textContent=err.message;status.classList.remove("success")}
   };
 
@@ -3165,6 +3162,9 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
         const delivery=order.delivery_date
           ? `${escapeHtml(order.delivery_date)}${order.delivery_time ? " at "+escapeHtml(order.delivery_time) : ""}`
           : "Not scheduled yet — check back for an update";
+        const cancelButton=order.can_cancel
+          ? `<button type="button" class="btn customer-cancel-order" data-order-id="${order.id}" data-seconds="${order.cancel_seconds_remaining}" style="margin-top:12px;background:#812518;color:#fff">Cancel order (${Math.floor(order.cancel_seconds_remaining/60)}:${String(order.cancel_seconds_remaining%60).padStart(2,"0")} left)</button><p style="font-size:12px;color:#76513d;margin:5px 0">Cancellation is available only during the first 5 minutes while the order is Pending.</p>`
+          : (order.status==="Pending" ? `<p style="font-size:12px;color:#a12619;margin-top:10px">Cancellation period ended (5 minutes).</p>` : "");
         return `<article style="border:1px solid #e2c8a5;border-radius:14px;padding:15px;margin:12px 0;background:#fff8ed;color:#4c241d">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3>Order #${order.id}</h3><b>${escapeHtml(order.status||"Pending")}</b></div>
           <p style="font-size:12px;color:#76513d;margin:5px 0 10px">Placed: ${escapeHtml((order.created_at||"").replace("T"," ").slice(0,16))}</p>
@@ -3173,8 +3173,26 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
           <p style="margin-top:10px"><b>Estimated delivery:</b> ${delivery}</p>
           ${order.admin_note?`<p style="margin-top:6px"><b>Update from EL BRUSTO:</b> ${escapeHtml(order.admin_note)}</p>`:""}
           <p style="font-size:12px;color:#76513d;margin-top:8px">Deliver to: ${escapeHtml(order.address||"")}</p>
+          ${cancelButton}
         </article>`;
       }).join("");
+      window.clearInterval(window.elBrustoCancelCountdown);
+      window.elBrustoCancelCountdown=window.setInterval(()=>{
+        const buttons=box.querySelectorAll(".customer-cancel-order");
+        if(!buttons.length){window.clearInterval(window.elBrustoCancelCountdown);return;}
+        buttons.forEach(button=>{
+          let seconds=Math.max(0,Number(button.dataset.seconds||0)-1);button.dataset.seconds=String(seconds);
+          button.textContent=seconds>0?`Cancel order (${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")} left)`:"Cancellation period ended";
+          if(seconds===0){button.disabled=true;button.style.opacity=".6";}
+        });
+      },1000);
+      box.querySelectorAll(".customer-cancel-order").forEach(button=>button.addEventListener("click",async()=>{
+        const id=button.dataset.orderId;
+        if(!confirm("Cancel this order? This can only be done within 5 minutes of placing it."))return;
+        button.disabled=true;button.textContent="Cancelling...";
+        try{await api(`/api/orders/${id}/cancel`,{method:"POST",body:"{}"});await showMyOrders();}
+        catch(err){alert(err.message);await showMyOrders();}
+      }));
     }catch(error){
       if(error.message==="LOGIN_REQUIRED"){ordersOverlay.hidden=true;openAccount();setStatus("Please log in to view your orders.");}
       else box.innerHTML=`<p>${escapeHtml(error.message)}</p>`;
