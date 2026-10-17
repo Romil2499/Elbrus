@@ -2797,6 +2797,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   .cart-toggle{background:#e7b052;color:#3d130e}
   .cart-count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#54130f;color:white}
   .add-to-cart{margin-top:12px;padding:10px 14px;border:0;border-radius:9px;background:#8e2c1c;color:white;font-weight:700;cursor:pointer}
+  .checkout-form button:disabled{opacity:.7;cursor:wait;filter:saturate(.75)}
   
   .cart-flyer{
     position:fixed;
@@ -3199,21 +3200,46 @@ async function addToCart(name, price, image, button) {
   checkoutOverlay.addEventListener("click",e=>{if(e.target===checkoutOverlay){checkoutOverlay.hidden=true;resetCheckoutView()}});
   checkoutOverlay.querySelector("#checkout-form").onsubmit=async e=>{
     e.preventDefault();
-    const status=checkoutOverlay.querySelector("#checkout-status");status.textContent="Placing order...";
+    const form=e.currentTarget;
+    const status=checkoutOverlay.querySelector("#checkout-status");
+    const submitButton=form.querySelector('button[type="submit"]');
+
+    // Ipakita ang loading at pigilan ang paulit-ulit na pag-submit.
+    submitButton.disabled=true;
+    submitButton.dataset.originalText=submitButton.textContent;
+    submitButton.textContent="PLACING ORDER...";
+    status.textContent="Please wait while we process your order...";
+    status.classList.remove("success");
+
     try{
-      const order=await api("/api/orders",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
-      status.textContent="ORDER PLACED SUCCESSFULLY!";status.classList.add("success");
-      const form=e.currentTarget;
+      const order=await api("/api/orders",{
+        method:"POST",
+        body:JSON.stringify(Object.fromEntries(new FormData(form)))
+      });
+
       form.hidden=true;
+      status.textContent="";
       checkoutOverlay.querySelector("#checkout-summary").innerHTML=
-        `<div style="text-align:center;padding:14px 4px"><div style="font-size:42px">✓</div><h3 style="color:#19733b;margin:8px 0">DONE!</h3><p>Your order <b>#${order.order_id}</b> has been saved.</p><p style="margin:8px 0">You can track its status and estimated delivery in My Orders.</p><button type="button" class="btn" id="success-orders-btn" style="margin:12px 6px 0">TRACK MY ORDER</button><button type="button" class="btn" id="success-done-btn" style="margin:12px 6px 0">DONE</button></div>`;
-      e.currentTarget.reset();await loadCart();
-      let returnHomeTimer=window.setTimeout(()=>{
-        checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;
-      },2500);
-      checkoutOverlay.querySelector("#success-orders-btn").onclick=async()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;await showMyOrders()};
-      checkoutOverlay.querySelector("#success-done-btn").onclick=()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true};
-    }catch(err){status.textContent=err.message;status.classList.remove("success")}
+        `<div style="text-align:center;padding:22px 8px">
+          <div style="display:grid;place-items:center;width:76px;height:76px;margin:0 auto 16px;border-radius:50%;background:#e4f5e9;color:#19733b;font-size:42px;font-weight:800">✓</div>
+          <h3 style="color:#19733b;margin:8px 0;font-size:25px">ORDER SUCCESSFUL!</h3>
+          <p style="margin:10px 0;color:#624333">Your order <b>#${escapeHtml(order.order_id)}</b> has been placed successfully.</p>
+          <p style="margin:8px 0 22px;color:#624333;line-height:1.7">Thank you for ordering from <b>EL BRUSTO!</b><br>We appreciate your order.</p>
+          <button type="button" class="btn" id="success-okay-btn">OKAY</button>
+        </div>`;
+
+      await loadCart();
+      checkoutOverlay.querySelector("#success-okay-btn").onclick=()=>{
+        checkoutOverlay.hidden=true;
+        resetCheckoutView();
+        cartOverlay.hidden=true;
+      };
+    }catch(err){
+      status.textContent=err.message;
+      status.classList.remove("success");
+      submitButton.disabled=false;
+      submitButton.textContent=submitButton.dataset.originalText||"CONFIRM ORDER";
+    }
   };
 
   async function showMyOrders(){
@@ -3284,4 +3310,3 @@ async function addToCart(name, price, image, button) {
   refreshSession();
 })();
 </script>
-
