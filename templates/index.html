@@ -2080,7 +2080,15 @@ footer{
 
 .inquiry-form{width:min(620px,100%);margin:30px auto 0;padding:28px;text-align:left;background:linear-gradient(145deg,#fff8eb,#eee0c5);border:1px solid rgba(195,157,100,.65);border-radius:20px;box-shadow:0 10px 0 #42100c,0 20px 40px rgba(0,0,0,.24);display:flex;flex-direction:column;gap:10px}.inquiry-form label{color:#681b13;font-weight:700;margin-top:8px}.inquiry-form input,.inquiry-form textarea{width:100%;padding:13px 14px;border:1px solid #c9ae84;border-radius:9px;background:#fffdf7;color:#4c241d;font:500 15px 'Poppins',sans-serif}.inquiry-form textarea{resize:vertical}.inquiry-form input:focus,.inquiry-form textarea:focus{outline:2px solid #c98432;outline-offset:1px}.inquiry-form .btn{margin-top:12px;cursor:pointer}.inquiry-status{margin:8px 0 0!important;font-size:13px;color:#76513d!important;line-height:1.5}.inquiry-success-overlay{position:fixed;inset:0;z-index:1600;display:grid;place-items:center;padding:20px;background:rgba(25,6,5,.72);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease}.inquiry-success-overlay.is-visible{opacity:1;visibility:visible}.inquiry-success-card{position:relative;width:min(420px,100%);padding:38px 30px 32px;text-align:center;background:linear-gradient(145deg,#fff8eb,#eee0c5);border:2px solid #d7a34e;border-radius:26px;box-shadow:0 12px 0 #42100c,0 28px 70px rgba(0,0,0,.4);transform:translateY(18px) scale(.96);transition:transform .25s ease}.inquiry-success-overlay.is-visible .inquiry-success-card{transform:translateY(0) scale(1)}.inquiry-success-icon{display:grid;place-items:center;width:76px;height:76px;margin:0 auto 16px;border-radius:50%;background:#f3dfb8;color:#9c3b2b;font-size:38px;box-shadow:0 0 0 7px rgba(215,163,78,.18)}.inquiry-success-card h2{margin:0 0 10px;color:#812518;font-family:'Anton',sans-serif;font-size:34px;letter-spacing:.5px}.inquiry-success-card p{margin:0 0 22px;color:#624333;line-height:1.7}.inquiry-success-close{min-width:130px;padding:12px 24px;border:1px solid #f3ce83;border-radius:12px;background:linear-gradient(135deg,#e7b052,#c98432);color:#3d130e;font:800 14px 'Poppins',sans-serif;cursor:pointer;box-shadow:0 4px 0 #642018}.inquiry-success-close:focus-visible{outline:3px solid #812518;outline-offset:3px}@media(prefers-reduced-motion:reduce){.inquiry-success-overlay,.inquiry-success-card{transition:none}}.page-section[hidden]{display:none!important}
 nav a[aria-current="page"]{color:#f0c46d}
-nav a[aria-current="page"]::after{width:70%}</style>
+nav a[aria-current="page"]::after{width:70%}
+/* Keep the page content clear of the wrapped mobile navbar. */
+@media(max-width:600px){
+  body{max-width:100%;}
+  .hero{padding-top:155px!important;}
+  #menu{scroll-margin-top:150px;}
+}
+@media(max-width:360px){.hero{padding-top:150px!important;}}
+</style>
 
 </head>
 
@@ -2838,6 +2846,56 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   .checkout-form{display:flex;flex-direction:column;gap:9px}
   .notice{font-size:12px;color:#76513d;line-height:1.5}
   @media(max-width:600px){.otp-grid{grid-template-columns:1fr}.cart-box,.account-box,.checkout-box{padding:22px 18px}}
+
+  /* MOBILE NAV FIX: keep all account/cart buttons inside the navbar */
+  nav{box-sizing:border-box;min-width:0;max-width:1150px}
+  nav .nav-logo{flex:0 0 auto;min-width:0}
+  nav .account-toggle,nav .cart-toggle{
+    box-sizing:border-box;flex:0 1 auto;min-width:0;max-width:100%;
+    white-space:normal;overflow-wrap:anywhere;text-align:center;
+    line-height:1.15;word-break:normal;
+  }
+  nav .cart-count{flex:0 0 auto}
+  @media(max-width:600px){
+    nav{
+      top:10px!important;left:12px!important;right:12px!important;
+      transform:none!important;width:auto!important;max-width:none!important;
+      min-height:0!important;height:auto!important;
+      padding:12px!important;border-radius:24px!important;
+      display:flex!important;flex-wrap:wrap!important;
+      justify-content:center!important;align-items:center!important;
+      gap:8px!important;overflow:visible;
+    }
+    nav .nav-logo{
+      flex:1 0 100%!important;width:100%;text-align:center;
+      font-size:22px!important;letter-spacing:1.3px!important;
+      line-height:1.15;padding:2px 0 4px;
+    }
+    nav ul{display:none!important}
+    nav .account-toggle,nav .cart-toggle{
+      flex:1 1 0!important;width:auto!important;max-width:none!important;
+      min-width:0!important;padding:9px 7px!important;
+      font-size:clamp(10px,2.8vw,12px)!important;
+      border-radius:18px!important;line-height:1.15!important;
+    }
+    nav .cart-toggle .cart-count{
+      display:inline-grid!important;min-width:19px!important;height:19px!important;
+      padding:0 4px!important;margin-left:2px;font-size:11px!important;
+    }
+    body{overflow-x:hidden}
+    .menu-grid{grid-template-columns:minmax(0,1fr)!important;width:100%;}
+    .menu-card{width:100%;min-width:0;}
+    .menu-image{width:100%;max-width:100%;object-fit:cover;}
+    .menu-content{min-width:0;overflow-wrap:anywhere;}
+    .menu-content .add-to-cart,.menu-content .price{max-width:100%;}
+    .cart-panel,.account-overlay,.checkout-overlay{padding:12px!important;}
+    .cart-box,.account-box,.checkout-box{width:100%!important;max-width:560px;max-height:88dvh;overflow-y:auto;}
+  }
+  @media(max-width:360px){
+    nav{padding:10px!important;gap:6px!important}
+    nav .nav-logo{font-size:20px!important}
+    nav .account-toggle,nav .cart-toggle{padding:8px 5px!important;font-size:10px!important}
+  }
   `;
   document.head.appendChild(style);
 
