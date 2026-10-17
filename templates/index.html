@@ -2797,6 +2797,18 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   .cart-toggle{background:#e7b052;color:#3d130e}
   .cart-count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#54130f;color:white}
   .add-to-cart{margin-top:12px;padding:10px 14px;border:0;border-radius:9px;background:#8e2c1c;color:white;font-weight:700;cursor:pointer}
+  
+  .cart-flyer{
+    position:fixed;
+    z-index:99999;
+    width:65px;
+    height:65px;
+    object-fit:cover;
+    border-radius:12px;
+    pointer-events:none;
+    transition:transform 1.1s cubic-bezier(.2,.8,.2,1),opacity 1.1s ease;
+  }
+
   .cart-panel,.account-overlay,.checkout-overlay{position:fixed;inset:0;z-index:1400;background:rgba(15,3,2,.78);display:grid;place-items:center;padding:18px}
   .cart-panel[hidden],.account-overlay[hidden],.checkout-overlay[hidden]{display:none}
   .cart-box,.account-box,.checkout-box{position:relative;width:min(560px,100%);max-height:90vh;overflow:auto;padding:30px;background:#fff8eb;border:1px solid #d7a34e;border-radius:22px;box-shadow:0 20px 60px #0009;color:#4c241d}
@@ -3069,12 +3081,61 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     try{if(quantity<=0)await api("/api/cart/"+id,{method:"DELETE"});else await api("/api/cart/"+id,{method:"PUT",body:JSON.stringify({quantity})});await loadCart()}
     catch(e){alert(e.message)}
   }
-  async function addToCart(name,price,image){
-    try{
-      await api("/api/cart",{method:"POST",body:JSON.stringify({name,price,image})});
-      await loadCart();
-    }catch(e){if(e.message==="LOGIN_REQUIRED"){openAccount();setStatus("Please log in first.");}else alert(e.message)}
+// Animation: lilipad ang product image papunta sa CART
+function animateAddToCart(button, image) {
+  const cartButton = document.querySelector(".cart-toggle .cart-count")
+    ?.closest(".cart-toggle");
+
+  if (!button || !cartButton || !image) return;
+
+  const start = button.getBoundingClientRect();
+  const end = cartButton.getBoundingClientRect();
+
+  const flyer = document.createElement("img");
+  flyer.src = image;
+  flyer.className = "cart-flyer";
+
+  flyer.style.left = start.left + start.width / 2 - 32 + "px";
+  flyer.style.top = start.top + "px";
+  flyer.style.opacity = "1";
+  flyer.style.transform = "translate(0, 0) scale(1)";
+
+  document.body.appendChild(flyer);
+  flyer.getBoundingClientRect();
+
+  const moveX =
+    end.left + end.width / 2 - (start.left + start.width / 2);
+
+  const moveY =
+    end.top + end.height / 2 - (start.top + 32);
+
+  flyer.style.transform =
+    `translate(${moveX}px, ${moveY}px) scale(0.2)`;
+
+  flyer.style.opacity = "0.25";
+
+  setTimeout(() => flyer.remove(), 1150);
+}
+
+async function addToCart(name, price, image, button) {
+  animateAddToCart(button, image);
+
+  try {
+    await api("/api/cart", {
+      method: "POST",
+      body: JSON.stringify({ name, price, image })
+    });
+
+    await loadCart();
+  } catch (e) {
+    if (e.message === "LOGIN_REQUIRED") {
+      openAccount();
+      setStatus("Please log in first.");
+    } else {
+      alert(e.message);
+    }
   }
+}
 
   document.querySelectorAll(".menu-card").forEach(card=>{
     const name=card.querySelector("h3")?.innerText.trim().replace(/\s+/g," ");
@@ -3086,7 +3147,12 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     actual.forEach((price,i)=>{
       const size=actual.length>1?(i?"22oz":"16oz"):"";
       const b=document.createElement("button");b.className="add-to-cart";b.textContent=size?`ADD ${size} TO CART`:"ADD TO CART";
-      b.onclick=()=>addToCart(size?`${name} ${size}`:name,price,image);
+      b.onclick = () => addToCart(
+  size ? `${name} ${size}` : name,
+  price,
+  image,
+  b
+);
       content.appendChild(b);
     });
   });
