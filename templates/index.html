@@ -2796,17 +2796,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   .cart-toggle,.account-toggle{padding:9px 14px;border:1px solid #c99448;border-radius:24px;background:transparent;color:#f8ead3;font-weight:800;cursor:pointer}
   .cart-toggle{background:#e7b052;color:#3d130e}
   .cart-count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#54130f;color:white}
-  .add-to-cart{margin-top:12px;padding:10px 14px;border:0;border-radius:9px;background:#8e2c1c;color:white;font-weight:700;cursor:pointer;transition:transform .18s,filter .18s}
-  .add-to-cart:hover{filter:brightness(1.12);transform:translateY(-2px)}
-  .cart-flyer{position:fixed;z-index:2500;pointer-events:none;width:54px;height:54px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px #0006;transition:transform 1.15s cubic-bezier(.2,.8,.2,1),opacity 1.15s ease}
-  .cart-bump{animation:cartBump .45s ease}
-  @keyframes cartBump{0%,100%{transform:scale(1)}35%{transform:scale(1.22)}70%{transform:scale(.94)}}
-  .checkout-loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:18px;color:#812518;font-weight:800}
-  .checkout-spinner{width:24px;height:24px;border:3px solid #e7cda2;border-top-color:#812518;border-radius:50%;animation:checkoutSpin .7s linear infinite}
-  @keyframes checkoutSpin{to{transform:rotate(360deg)}}
-  .order-success{padding:18px 8px;text-align:center;animation:successPop .4s ease both}
-  .order-success-icon{display:grid;place-items:center;width:72px;height:72px;margin:0 auto 12px;border-radius:50%;background:#e0f4df;color:#19733b;font-size:38px;font-weight:900;box-shadow:0 0 0 8px #e0f4df66}
-  @keyframes successPop{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .add-to-cart{margin-top:12px;padding:10px 14px;border:0;border-radius:9px;background:#8e2c1c;color:white;font-weight:700;cursor:pointer}
   .cart-panel,.account-overlay,.checkout-overlay{position:fixed;inset:0;z-index:1400;background:rgba(15,3,2,.78);display:grid;place-items:center;padding:18px}
   .cart-panel[hidden],.account-overlay[hidden],.checkout-overlay[hidden]{display:none}
   .cart-box,.account-box,.checkout-box{position:relative;width:min(560px,100%);max-height:90vh;overflow:auto;padding:30px;background:#fff8eb;border:1px solid #d7a34e;border-radius:22px;box-shadow:0 20px 60px #0009;color:#4c241d}
@@ -2884,15 +2874,32 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
       <button class="btn" type="submit">LOG IN</button>
     </form>
     <p class="account-switch">New customer? <button type="button" id="go-signup">Create an account</button></p>
-    <p class="notice">Your account and orders are stored securely in the project's SQLite database.</p>`;
+    <p class="notice">For your security, we'll send a one-time verification code to your Gmail after your password is accepted.</p>`;
     passwordWrap(accountContent.querySelector('input[type=password]'));
     accountContent.querySelector("#go-signup").onclick=signupView;
     accountContent.querySelector("form").onsubmit=async e=>{
-      e.preventDefault();setStatus("Logging in...");
-      try{await api("/api/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
-        setStatus("Login successful.",true);await refreshSession();setTimeout(closeAccount,400);
+      e.preventDefault();setStatus("Checking login and sending Gmail code...");
+      try{
+        const result=await api("/api/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
+        if(result.otp_required){loginOtpView(result.token,result.masked_email);setStatus(`Verification code sent to ${result.masked_email}. It expires in 5 minutes.`);}
       }catch(err){setStatus(err.message)}
     };
+  }
+  function loginOtpView(token,maskedEmail){
+    accountContent.innerHTML=`<form class="account-form" id="login-otp-form">
+      <p>Enter the 6-digit code sent to <b>${escapeHtml(maskedEmail)}</b>.</p>
+      <label>Gmail verification code</label><input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+      <button class="btn" type="submit">VERIFY AND LOG IN</button>
+      <button class="link-btn" type="button" id="resend-login-otp">Resend code</button>
+      <button class="link-btn" type="button" id="back-login">Back to login</button>
+    </form>`;
+    accountContent.querySelector("#login-otp-form").onsubmit=async e=>{
+      e.preventDefault();setStatus("Verifying code...");
+      try{await api("/api/login/verify",{method:"POST",body:JSON.stringify({token,otp:new FormData(e.currentTarget).get("otp")})});setStatus("Login successful.",true);await refreshSession();setTimeout(closeAccount,450);}
+      catch(err){setStatus(err.message)}
+    };
+    accountContent.querySelector("#resend-login-otp").onclick=async()=>{setStatus("Sending a new code...");try{const r=await api("/api/login/resend",{method:"POST",body:"{}"});setStatus(`New code sent to ${r.masked_email}.`,true);}catch(err){setStatus(err.message)}};
+    accountContent.querySelector("#back-login").onclick=loginView;
   }
 
   function markInvalid(input, message){
@@ -3062,21 +3069,8 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     try{if(quantity<=0)await api("/api/cart/"+id,{method:"DELETE"});else await api("/api/cart/"+id,{method:"PUT",body:JSON.stringify({quantity})});await loadCart()}
     catch(e){alert(e.message)}
   }
-  function animateCartAdd(button,image){
-    const target=cartBtn.getBoundingClientRect();
-    const start=button.getBoundingClientRect();
-    const flyer=document.createElement("img");flyer.className="cart-flyer";flyer.src=image||"";
-    flyer.style.left=`${start.left+start.width/2-27}px`;flyer.style.top=`${start.top+start.height/2-27}px`;
-    document.body.appendChild(flyer);
-    flyer.getBoundingClientRect();
-    flyer.style.transform=`translate(${target.left+target.width/2-(start.left+start.width/2)}px,${target.top+target.height/2-(start.top+start.height/2)}px) scale(.25) rotate(12deg)`;
-    flyer.style.opacity=".25";
-    setTimeout(()=>flyer.remove(),1250);
-    cartBtn.classList.remove("cart-bump");void cartBtn.offsetWidth;cartBtn.classList.add("cart-bump");
-  }
-  async function addToCart(name,price,image,button){
+  async function addToCart(name,price,image){
     try{
-      if(button)animateCartAdd(button,image);
       await api("/api/cart",{method:"POST",body:JSON.stringify({name,price,image})});
       await loadCart();
     }catch(e){if(e.message==="LOGIN_REQUIRED"){openAccount();setStatus("Please log in first.");}else alert(e.message)}
@@ -3092,7 +3086,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     actual.forEach((price,i)=>{
       const size=actual.length>1?(i?"22oz":"16oz"):"";
       const b=document.createElement("button");b.className="add-to-cart";b.textContent=size?`ADD ${size} TO CART`:"ADD TO CART";
-      b.onclick=()=>addToCart(size?`${name} ${size}`:name,price,image,b);
+      b.onclick=()=>addToCart(size?`${name} ${size}`:name,price,image);
       content.appendChild(b);
     });
   });
@@ -3104,7 +3098,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   /* ---------- checkout ---------- */
   const checkoutOverlay=document.createElement("div");
   checkoutOverlay.className="checkout-overlay";checkoutOverlay.hidden=true;
-  checkoutOverlay.innerHTML=`<section class="checkout-box"><button class="modal-close" id="checkout-close" type="button" aria-label="Close checkout">×</button><h2 id="checkout-title">CONFIRM ORDER</h2><p class="status" id="checkout-status" role="status" aria-live="polite"></p><div id="checkout-summary" class="checkout-summary"></div><div id="checkout-success" hidden></div><form class="checkout-form" id="checkout-form">
+  checkoutOverlay.innerHTML=`<section class="checkout-box"><button class="modal-close" id="checkout-close">×</button><h2>CONFIRM ORDER</h2><p class="status" id="checkout-status"></p><div id="checkout-summary" class="checkout-summary"></div><form class="checkout-form" id="checkout-form">
     <label>Delivery address</label><textarea name="address" id="co-address" rows="3" required></textarea>
     <label>Postal code</label><input name="postal_code" id="co-postal" required>
     <label>Mobile number</label><input name="phone" id="co-phone" required>
@@ -3113,58 +3107,48 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   </form></section>`;
   document.body.appendChild(checkoutOverlay);
 
-  const checkoutForm=checkoutOverlay.querySelector("#checkout-form");
-  const checkoutStatus=checkoutOverlay.querySelector("#checkout-status");
-  const checkoutSummary=checkoutOverlay.querySelector("#checkout-summary");
-  const checkoutSuccess=checkoutOverlay.querySelector("#checkout-success");
-  const checkoutClose=checkoutOverlay.querySelector("#checkout-close");
-  const checkoutSubmit=checkoutForm.querySelector('button[type="submit"]');
-  let orderSubmitting=false;
   async function openCheckout(){
     try{
       const me=await api("/api/me");
       if(!me.logged_in){openAccount();setStatus("Please log in before checkout.");return}
       const cart=await api("/api/cart");
       if(!cart.items.length){alert("Your cart is empty.");return}
-      checkoutForm.hidden=false;checkoutSuccess.hidden=true;checkoutSuccess.innerHTML="";
-      checkoutStatus.textContent="";checkoutStatus.classList.remove("success");
-      checkoutSummary.hidden=false;
       checkoutOverlay.hidden=false;
-      const u=me.user||{};
-      checkoutForm.querySelector("#co-address").value=u.address||"";
-      checkoutForm.querySelector("#co-postal").value=u.postal_code||"";
-      checkoutForm.querySelector("#co-phone").value=u.phone||"";
-      checkoutSummary.innerHTML=cart.items.map(i=>`<div>${i.quantity} × ${escapeHtml(i.name)} — ₱${Number(i.subtotal).toFixed(2)}</div>`).join("")+`<hr><b>Total: ₱${Number(cart.total).toFixed(2)}</b>`;
+      const u=me.user;
+      document.querySelector("#co-address").value=u.address||"";
+      document.querySelector("#co-postal").value=u.postal_code||"";
+      document.querySelector("#co-phone").value=u.phone||"";
+      document.querySelector("#checkout-summary").innerHTML=cart.items.map(i=>`<div>${i.quantity} × ${escapeHtml(i.name)} — ₱${i.subtotal.toFixed(2)}</div>`).join("")+`<hr><b>Total: ₱${cart.total.toFixed(2)}</b>`;
     }catch(e){alert(e.message)}
   }
   cartOverlay.querySelector("#checkout-btn").onclick=openCheckout;
-  checkoutClose.addEventListener("click",()=>{if(!orderSubmitting)checkoutOverlay.hidden=true});
-  checkoutOverlay.addEventListener("click",e=>{if(e.target===checkoutOverlay&&!orderSubmitting)checkoutOverlay.hidden=true});
-  checkoutForm.addEventListener("submit",async e=>{
+  function resetCheckoutView(){
+    const form=checkoutOverlay.querySelector("#checkout-form");
+    form.hidden=false;form.reset();
+    checkoutOverlay.querySelector("#checkout-status").textContent="";
+    checkoutOverlay.querySelector("#checkout-status").classList.remove("success");
+    checkoutOverlay.querySelector("#checkout-summary").innerHTML="";
+  }
+  checkoutOverlay.querySelector("#checkout-close").onclick=()=>{checkoutOverlay.hidden=true;resetCheckoutView()};
+  checkoutOverlay.addEventListener("click",e=>{if(e.target===checkoutOverlay){checkoutOverlay.hidden=true;resetCheckoutView()}});
+  checkoutOverlay.querySelector("#checkout-form").onsubmit=async e=>{
     e.preventDefault();
-    if(orderSubmitting)return;
-    if(!checkoutForm.reportValidity())return;
-    orderSubmitting=true;checkoutSubmit.disabled=true;checkoutClose.disabled=true;
-    checkoutStatus.classList.remove("success");checkoutStatus.textContent="";
-    checkoutSummary.hidden=true;checkoutForm.hidden=true;
-    checkoutSuccess.hidden=false;
-    checkoutSuccess.innerHTML='<div class="checkout-loading"><span class="checkout-spinner" aria-hidden="true"></span><span>Placing your order… Please wait.</span></div>';
+    const status=checkoutOverlay.querySelector("#checkout-status");status.textContent="Placing order...";
     try{
-      const payload=Object.fromEntries(new FormData(checkoutForm));
-      const order=await api("/api/orders",{method:"POST",body:JSON.stringify(payload)});
-      checkoutStatus.textContent="ORDER PLACED SUCCESSFULLY!";checkoutStatus.classList.add("success");
-      checkoutSuccess.innerHTML=`<div class="order-success"><div class="order-success-icon" aria-hidden="true">✓</div><h3 style="color:#19733b;margin:8px 0">ORDER SUCCESSFUL!</h3><p>Thank you for ordering from <b>EL BRUSTO</b>!</p><p>Your order <b>#${escapeHtml(order.order_id)}</b> has been received.</p><p class="notice" style="margin:10px 0 18px">We appreciate your order. You can check the preparation and delivery status anytime in My Orders.</p><button type="button" class="btn" id="success-orders-btn">TRACK MY ORDER</button> <button type="button" class="btn" id="success-done-btn">OKAY</button></div>`;
-      checkoutForm.reset();await loadCart();
-      checkoutSuccess.querySelector("#success-orders-btn").addEventListener("click",async()=>{checkoutOverlay.hidden=true;await showMyOrders()});
-      checkoutSuccess.querySelector("#success-done-btn").addEventListener("click",()=>{checkoutOverlay.hidden=true;checkoutStatus.textContent="";checkoutStatus.classList.remove("success")});
-    }catch(err){
-      checkoutSuccess.hidden=true;checkoutSummary.hidden=false;checkoutForm.hidden=false;
-      checkoutStatus.textContent=err.message||"Could not place the order. Please try again.";
-      checkoutStatus.classList.remove("success");
-    }finally{
-      orderSubmitting=false;checkoutSubmit.disabled=false;checkoutClose.disabled=false;
-    }
-  });
+      const order=await api("/api/orders",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.currentTarget)))});
+      status.textContent="ORDER PLACED SUCCESSFULLY!";status.classList.add("success");
+      const form=e.currentTarget;
+      form.hidden=true;
+      checkoutOverlay.querySelector("#checkout-summary").innerHTML=
+        `<div style="text-align:center;padding:14px 4px"><div style="font-size:42px">✓</div><h3 style="color:#19733b;margin:8px 0">DONE!</h3><p>Your order <b>#${order.order_id}</b> has been saved.</p><p style="margin:8px 0">You can track its status and estimated delivery in My Orders.</p><button type="button" class="btn" id="success-orders-btn" style="margin:12px 6px 0">TRACK MY ORDER</button><button type="button" class="btn" id="success-done-btn" style="margin:12px 6px 0">DONE</button></div>`;
+      e.currentTarget.reset();await loadCart();
+      let returnHomeTimer=window.setTimeout(()=>{
+        checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;
+      },2500);
+      checkoutOverlay.querySelector("#success-orders-btn").onclick=async()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true;await showMyOrders()};
+      checkoutOverlay.querySelector("#success-done-btn").onclick=()=>{window.clearTimeout(returnHomeTimer);checkoutOverlay.hidden=true;resetCheckoutView();cartOverlay.hidden=true};
+    }catch(err){status.textContent=err.message;status.classList.remove("success")}
+  };
 
   async function showMyOrders(){
     ordersOverlay.hidden=false;
@@ -3178,6 +3162,9 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
         const delivery=order.delivery_date
           ? `${escapeHtml(order.delivery_date)}${order.delivery_time ? " at "+escapeHtml(order.delivery_time) : ""}`
           : "Not scheduled yet — check back for an update";
+        const cancelButton=order.can_cancel
+          ? `<button type="button" class="btn customer-cancel-order" data-order-id="${order.id}" data-seconds="${order.cancel_seconds_remaining}" style="margin-top:12px;background:#812518;color:#fff">Cancel order (${Math.floor(order.cancel_seconds_remaining/60)}:${String(order.cancel_seconds_remaining%60).padStart(2,"0")} left)</button><p style="font-size:12px;color:#76513d;margin:5px 0">Cancellation is available only during the first 5 minutes while the order is Pending.</p>`
+          : (order.status==="Pending" ? `<p style="font-size:12px;color:#a12619;margin-top:10px">Cancellation period ended (5 minutes).</p>` : "");
         return `<article style="border:1px solid #e2c8a5;border-radius:14px;padding:15px;margin:12px 0;background:#fff8ed;color:#4c241d">
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3>Order #${order.id}</h3><b>${escapeHtml(order.status||"Pending")}</b></div>
           <p style="font-size:12px;color:#76513d;margin:5px 0 10px">Placed: ${escapeHtml((order.created_at||"").replace("T"," ").slice(0,16))}</p>
@@ -3186,8 +3173,26 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
           <p style="margin-top:10px"><b>Estimated delivery:</b> ${delivery}</p>
           ${order.admin_note?`<p style="margin-top:6px"><b>Update from EL BRUSTO:</b> ${escapeHtml(order.admin_note)}</p>`:""}
           <p style="font-size:12px;color:#76513d;margin-top:8px">Deliver to: ${escapeHtml(order.address||"")}</p>
+          ${cancelButton}
         </article>`;
       }).join("");
+      window.clearInterval(window.elBrustoCancelCountdown);
+      window.elBrustoCancelCountdown=window.setInterval(()=>{
+        const buttons=box.querySelectorAll(".customer-cancel-order");
+        if(!buttons.length){window.clearInterval(window.elBrustoCancelCountdown);return;}
+        buttons.forEach(button=>{
+          let seconds=Math.max(0,Number(button.dataset.seconds||0)-1);button.dataset.seconds=String(seconds);
+          button.textContent=seconds>0?`Cancel order (${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")} left)`:"Cancellation period ended";
+          if(seconds===0){button.disabled=true;button.style.opacity=".6";}
+        });
+      },1000);
+      box.querySelectorAll(".customer-cancel-order").forEach(button=>button.addEventListener("click",async()=>{
+        const id=button.dataset.orderId;
+        if(!confirm("Cancel this order? This can only be done within 5 minutes of placing it."))return;
+        button.disabled=true;button.textContent="Cancelling...";
+        try{await api(`/api/orders/${id}/cancel`,{method:"POST",body:"{}"});await showMyOrders();}
+        catch(err){alert(err.message);await showMyOrders();}
+      }));
     }catch(error){
       if(error.message==="LOGIN_REQUIRED"){ordersOverlay.hidden=true;openAccount();setStatus("Please log in to view your orders.");}
       else box.innerHTML=`<p>${escapeHtml(error.message)}</p>`;
