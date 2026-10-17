@@ -2798,7 +2798,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
   .cart-count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#54130f;color:white}
   .add-to-cart{margin-top:12px;padding:10px 14px;border:0;border-radius:9px;background:#8e2c1c;color:white;font-weight:700;cursor:pointer;transition:transform .18s,filter .18s}
   .add-to-cart:hover{filter:brightness(1.12);transform:translateY(-2px)}
-  .cart-flyer{position:fixed;z-index:2500;pointer-events:none;width:54px;height:54px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px #0006;transition:transform .62s cubic-bezier(.2,.8,.2,1),opacity .62s ease}
+  .cart-flyer{position:fixed;z-index:2500;pointer-events:none;width:54px;height:54px;border-radius:14px;object-fit:cover;box-shadow:0 8px 24px #0006;transition:transform 1.15s cubic-bezier(.2,.8,.2,1),opacity 1.15s ease}
   .cart-bump{animation:cartBump .45s ease}
   @keyframes cartBump{0%,100%{transform:scale(1)}35%{transform:scale(1.22)}70%{transform:scale(.94)}}
   .checkout-loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:18px;color:#812518;font-weight:800}
@@ -3071,7 +3071,7 @@ if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
     flyer.getBoundingClientRect();
     flyer.style.transform=`translate(${target.left+target.width/2-(start.left+start.width/2)}px,${target.top+target.height/2-(start.top+start.height/2)}px) scale(.25) rotate(12deg)`;
     flyer.style.opacity=".25";
-    setTimeout(()=>flyer.remove(),700);
+    setTimeout(()=>flyer.remove(),1250);
     cartBtn.classList.remove("cart-bump");void cartBtn.offsetWidth;cartBtn.classList.add("cart-bump");
   }
   async function addToCart(name,price,image,button){
