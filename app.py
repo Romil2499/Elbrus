@@ -17,15 +17,16 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "el_brusto.db")
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
-RESEND_FROM = os.getenv("RESEND_FROM", "onboarding@resend.dev").strip()
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+BREVO_FROM = os.getenv("BREVO_FROM", "").strip()
+BREVO_FROM_NAME = os.getenv("BREVO_FROM_NAME", "EL BRUSTO").strip()
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_FROM = os.getenv("TWILIO_FROM_NUMBER", "")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
-print("Resend API key configured:", bool(RESEND_API_KEY))
-print("Resend sender:", RESEND_FROM)
+print("Brevo API key configured:", bool(BREVO_API_KEY))
+print("Brevo sender configured:", bool(BREVO_FROM))
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 DEV_SHOW_OTP = os.getenv("DEV_SHOW_OTP", "false").lower() == "true"
 
@@ -162,37 +163,36 @@ def mask_phone(phone):
 
 
 def send_email_otp(to_email, code):
-    """
-    Send OTP through Resend's HTTPS API.
-    With onboarding@resend.dev, Resend only permits sending to the
-    email address associated with your Resend account (testing mode).
-    """
-    if not RESEND_API_KEY:
-        raise RuntimeError("Resend is not configured. Set RESEND_API_KEY in your environment.")
+    """Send an OTP email using the Brevo transactional email API."""
+    if not BREVO_API_KEY:
+        raise RuntimeError("Brevo is not configured. Set BREVO_API_KEY in the environment.")
+    if not BREVO_FROM:
+        raise RuntimeError("Brevo sender is not configured. Set BREVO_FROM in the environment.")
 
     response = requests.post(
-        "https://api.resend.com/emails",
+        "https://api.brevo.com/v3/smtp/email",
         headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
+            "api-key": BREVO_API_KEY,
+            "accept": "application/json",
+            "content-type": "application/json",
         },
         json={
-            "from": RESEND_FROM,
-            "to": [to_email],
+            "sender": {"name": BREVO_FROM_NAME, "email": BREVO_FROM},
+            "to": [{"email": to_email}],
             "subject": "EL BRUSTO - Account Verification OTP",
-            "text": (
+            "textContent": (
                 f"Your EL BRUSTO verification code is: {code}\n\n"
                 f"This code expires in {OTP_EXPIRY_MINUTES} minutes. "
                 "Do not share it with anyone."
             ),
         },
-        timeout=15,
+        timeout=20,
     )
 
     if not response.ok:
-        # Keep the provider response in server logs for debugging, not in the client response.
-        app.logger.error("Resend API failed (%s): %s", response.status_code, response.text[:1000])
-        raise RuntimeError(f"Resend API request failed with HTTP {response.status_code}.")
+        # Log provider details on the server only; never expose API credentials to the client.
+        app.logger.error("Brevo API failed (%s): %s", response.status_code, response.text[:1000])
+        raise RuntimeError(f"Brevo API request failed with HTTP {response.status_code}.")
 
 
 def send_sms_otp(to_phone, code):
@@ -273,8 +273,8 @@ def register_start():
     try:
         send_email_otp(email, email_otp)
     except Exception:
-        app.logger.exception("Resend OTP delivery failed")
-        send_error = "OTP email could not be sent. Check RESEND_API_KEY and RESEND_FROM in Render Environment, then try again."
+        app.logger.exception("Brevo OTP delivery failed")
+        send_error = "OTP email could not be sent. Check BREVO_API_KEY and BREVO_FROM in Render Environment, then try again."
 
     response = {"token": token, "masked_email": mask_email(email)}
     if send_error:
@@ -302,8 +302,8 @@ def register_resend():
     try:
         send_email_otp(payload["email"], email_otp)
     except Exception:
-        app.logger.exception("Resend OTP resend failed")
-        send_error = "OTP email could not be sent. Check RESEND_API_KEY and RESEND_FROM in Render Environment and try again."
+        app.logger.exception("Brevo OTP resend failed")
+        send_error = "OTP email could not be sent. Check BREVO_API_KEY and BREVO_FROM in Render Environment and try again."
     response = {"token":row["token"], "masked_email":mask_email(payload["email"])}
     if send_error:
         response["delivery_error"] = send_error
@@ -357,7 +357,7 @@ def login():
         send_email_otp(user["email"], code)
     except Exception:
         app.logger.exception("Login OTP delivery failed")
-        return jsonify(error="Hindi naipadala ang login code. Tingnan ang RESEND_API_KEY at RESEND_FROM sa Render Environment at subukan ulit."), 503
+        return jsonify(error="Hindi naipadala ang login code. Tingnan ang BREVO_API_KEY at BREVO_FROM sa Render Environment at subukan ulit."), 503
     session.clear()
     session["pending_login"] = {"user_id": user["id"], "token": token, "otp_hash": hash_otp(code),
                                  "expires_at": expires.isoformat(), "attempts": 0}
